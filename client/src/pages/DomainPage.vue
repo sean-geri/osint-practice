@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import DomainSearch from '@/components/DomainSearch.vue'
+import IpPanel from '@/components/IpPanel.vue'
 import { getDomainInfo } from '@/operations/domains.operations'
 import type { DomainInfo } from '@/types/domain'
 
 const result = ref<DomainInfo | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const selectedIp = ref<string | null>(null)
 
 async function onSearch(domain: string) {
   loading.value = true
@@ -29,75 +31,132 @@ const sections = computed(() => {
   const r = result.value?.records
   if (!r) return []
   return [
-    { key: 'ipv4', title: 'IPv4 (A)', items: r.ipv4 },
-    { key: 'ipv6', title: 'IPv6 (AAAA)', items: r.ipv6 },
-    { key: 'ns', title: 'Name servers (NS)', items: r.ns },
+    { key: 'ipv4', title: 'IPv4 (A)', items: r.ipv4, isIp: true },
+    { key: 'ipv6', title: 'IPv6 (AAAA)', items: r.ipv6, isIp: true },
+    { key: 'ns', title: 'Name servers (NS)', items: r.ns, isIp: false },
   ]
 })
 </script>
 
 <template>
-  <section class="page">
-    <header class="page-header">
-      <h1>Domain lookup</h1>
-      <p class="subtitle">IP addresses, mail servers, name servers and TXT records for a domain.</p>
-    </header>
+  <div class="layout">
+    <section class="page">
+      <header class="page-header">
+        <h1>Domain lookup</h1>
+        <p class="subtitle">IP addresses, mail servers, name servers and TXT records for a domain.</p>
+      </header>
 
-    <DomainSearch :loading="loading" @search="onSearch" />
+      <DomainSearch :loading="loading" @search="onSearch" />
 
-    <p v-if="error" class="alert" role="alert">{{ error }}</p>
+      <p v-if="error" class="alert" role="alert">{{ error }}</p>
 
-    <p v-if="loading" class="status">Querying DNS…</p>
+      <p v-if="loading" class="status">Querying DNS…</p>
 
-    <div v-if="result" class="result">
-      <div class="result-header">
-        <h2 class="result-domain">{{ result.domain }}</h2>
-        <span class="badge" :class="result.source">
-          {{ result.source === 'cache' ? 'Cached' : 'Live DNS' }}
-        </span>
-        <span class="fetched">Fetched {{ fetchedAt }}</span>
+      <div v-if="result" class="result">
+        <div class="result-header">
+          <h2 class="result-domain">{{ result.domain }}</h2>
+          <span class="badge" :class="result.source">
+            {{ result.source === 'cache' ? 'Cached' : 'Live DNS' }}
+          </span>
+          <span class="fetched">Fetched {{ fetchedAt }}</span>
+        </div>
+
+        <div class="grid">
+          <article v-for="section in sections" :key="section.key" class="card">
+            <h3 class="card-title">
+              {{ section.title }} <span class="count">{{ section.items.length }}</span>
+            </h3>
+            <ul v-if="section.items.length" class="list">
+              <li v-for="item in section.items" :key="item" class="mono">
+                <button
+                  v-if="section.isIp"
+                  type="button"
+                  class="ip-link"
+                  :class="{ selected: item === selectedIp }"
+                  :title="`Look up ${item}`"
+                  @click="selectedIp = item"
+                >
+                  {{ item }}
+                </button>
+                <template v-else>{{ item }}</template>
+              </li>
+            </ul>
+            <p v-else class="empty">No records</p>
+          </article>
+
+          <article class="card">
+            <h3 class="card-title">
+              Mail servers (MX) <span class="count">{{ result.records.mx.length }}</span>
+            </h3>
+            <ul v-if="result.records.mx.length" class="list">
+              <li v-for="mx in result.records.mx" :key="mx.exchange" class="mx-row">
+                <span class="mono">{{ mx.exchange }}</span>
+                <span class="priority">priority {{ mx.priority }}</span>
+              </li>
+            </ul>
+            <p v-else class="empty">No records</p>
+          </article>
+
+          <article class="card card-wide">
+            <h3 class="card-title">
+              Text records (TXT) <span class="count">{{ result.records.txt.length }}</span>
+            </h3>
+            <ul v-if="result.records.txt.length" class="list">
+              <li v-for="(txt, i) in result.records.txt" :key="i" class="mono txt">{{ txt }}</li>
+            </ul>
+            <p v-else class="empty">No records</p>
+          </article>
+        </div>
       </div>
+    </section>
 
-      <div class="grid">
-        <article v-for="section in sections" :key="section.key" class="card">
-          <h3 class="card-title">
-            {{ section.title }} <span class="count">{{ section.items.length }}</span>
-          </h3>
-          <ul v-if="section.items.length" class="list">
-            <li v-for="item in section.items" :key="item" class="mono">{{ item }}</li>
-          </ul>
-          <p v-else class="empty">No records</p>
-        </article>
-
-        <article class="card">
-          <h3 class="card-title">
-            Mail servers (MX) <span class="count">{{ result.records.mx.length }}</span>
-          </h3>
-          <ul v-if="result.records.mx.length" class="list">
-            <li v-for="mx in result.records.mx" :key="mx.exchange" class="mx-row">
-              <span class="mono">{{ mx.exchange }}</span>
-              <span class="priority">priority {{ mx.priority }}</span>
-            </li>
-          </ul>
-          <p v-else class="empty">No records</p>
-        </article>
-
-        <article class="card card-wide">
-          <h3 class="card-title">
-            Text records (TXT) <span class="count">{{ result.records.txt.length }}</span>
-          </h3>
-          <ul v-if="result.records.txt.length" class="list">
-            <li v-for="(txt, i) in result.records.txt" :key="i" class="mono txt">{{ txt }}</li>
-          </ul>
-          <p v-else class="empty">No records</p>
-        </article>
-      </div>
-    </div>
-  </section>
+    <IpPanel :ip="selectedIp" class="side" />
+  </div>
 </template>
 
 <style scoped>
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  align-items: start;
+  gap: 24px;
+}
+
+.side {
+  position: sticky;
+  top: 24px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    position: static;
+  }
+}
+
+.ip-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--info);
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.ip-link:hover,
+.ip-link.selected {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .page {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;

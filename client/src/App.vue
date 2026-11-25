@@ -67,7 +67,7 @@ import { RouterLink, RouterView } from 'vue-router'
 }
 
 .app-main {
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 32px 24px 64px;
 }
