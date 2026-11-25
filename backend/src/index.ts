@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import cors from 'cors';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { connectCouchbase } from './db/couchbase.js';
 import { domainsRouter } from './modules/domains/domains.routes.js';
@@ -6,6 +7,7 @@ import { domainsRouter } from './modules/domains/domains.routes.js';
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+app.use(cors());
 app.use(express.json());
 
 app.get('/api/health', (_req: Request, res: Response) => {
