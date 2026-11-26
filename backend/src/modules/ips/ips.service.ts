@@ -20,8 +20,6 @@ export class ReservedIpError extends Error {
   }
 }
 
-const docKey = (ip: string) => `ip::${ip}`;
-
 async function fetchFromIpInfo(ip: string): Promise<IpInfoResponse> {
   const token = process.env.IPINFO_TOKEN;
   let response: Response;
@@ -76,8 +74,9 @@ function toIpDocument({ ip, version }: ParsedIp, info: IpInfoResponse): IpDocume
 }
 
 export async function getIpInfo(parsed: ParsedIp): Promise<IpResponse> {
-  const collection = getCollection();
-  const key = docKey(parsed.ip);
+  const collection = getCollection('ips');
+  // The collection holds only IPs, so the normalized IP itself is the key.
+  const key = parsed.ip;
 
   try {
     const result = await collection.get(key);

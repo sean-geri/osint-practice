@@ -51,7 +51,7 @@ async function resolveDomain(domain: string): Promise<DomainRecords> {
 }
 
 export async function getDomainInfo(domain: string): Promise<DomainResponse> {
-  const collection = getCollection();
+  const collection = getCollection('domains');
 
   try {
     const result = await collection.get(domain);
